@@ -1,0 +1,7 @@
+body {
+    margin: 0;
+    font-family: "Inter", system-ui, Arial, sans-serif;
+    background: linear-gradient(180deg, #b3e5fc, #e1f5fe);
+    min-height: 100vh;
+  }
+  
