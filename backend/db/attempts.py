@@ -1,0 +1,57 @@
+from db.connection import get_db 
+
+def evaluate_attempt(attempt_id):
+    conn, cur = get_db()
+    cur.execute(
+        "SELECT cheating_score FROM exam_attempts WHERE id=%s",
+        (attempt_id,)
+    )
+    score = cur.fetchone()[0]
+
+    admin_status = None
+    if score >= 15:
+        admin_status = "TERMINATED"
+        cur.execute(
+            "UPDATE exam_attempts SET status=%s WHERE id=%s",
+            (admin_status, attempt_id)
+        )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    warning = None
+    if 5 <= score < 8:
+        warning = "WARNING"
+    elif 8 <= score < 12:
+        warning = "WARNING_YELLOW"
+    elif 12 <= score < 15:
+        warning = "FINAL_WARNING"
+
+    return {
+        "status": admin_status,
+        "warning": warning
+    }
+
+
+def auto_flag_abandoned_attempts():
+    """
+    Any exam that:
+    - is ONGOING
+    - has NO ended_at
+    - started more than X minutes ago
+    should be FLAGGED
+    """
+    conn, cur = get_db()
+
+    cur.execute("""
+        UPDATE exam_attempts
+        SET status = 'FLAGGED'
+        WHERE status = 'ONGOING'
+          AND ended_at IS NULL
+          AND started_at < NOW() - INTERVAL '2 minutes'
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
