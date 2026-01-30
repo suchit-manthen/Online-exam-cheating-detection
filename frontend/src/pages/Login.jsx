@@ -113,7 +113,7 @@ function Login() {
           </p>
         </div>
 
-        {/* RIGHT PANEL - Re-designed for Context */}
+        {/* RIGHT PANEL - Updated with REAL features */}
         <div style={styles.right}>
           <div style={styles.rightContent}>
             <h2 style={styles.rightTitle}>AI-Powered Integrity</h2>
@@ -123,73 +123,37 @@ function Login() {
             </p>
 
             <div style={styles.featuresList}>
+              {/* Feature 1: Mobile Detection (YOLO) */}
               <FeatureCard
                 icon={
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                 }
-                title="Gaze Tracking"
-                desc="Monitors eye movement to detect off-screen references."
+                title="Mobile Phone Detection"
+                desc="Real-time AI detection of prohibited devices like smartphones."
               />
 
+              {/* Feature 2: Head Pose (MediaPipe) */}
               <FeatureCard
                 icon={
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 }
-                title="Identity Verification"
-                desc="Continuous biometric authentication throughout the exam."
+                title="Head Pose Analysis"
+                desc="Monitors face direction to flag suspicious looking away or down."
               />
 
+              {/* Feature 3: Browser Lockdown (JS Utils) */}
               <FeatureCard
                 icon={
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.131A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.858.571-4.175m4.48 1.559A6 6 0 006 9c0 1.59.35 3.09 1 4.417"
-                    />
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 }
-                title="Malpractice Detection"
-                desc="AI analyzes tab switching, multiple voices, and object detection."
+                title="Browser Lockdown"
+                desc="Prevents tab switching, minimizing, and copy-pasting."
               />
             </div>
           </div>
@@ -214,49 +178,48 @@ const FeatureCard = ({ icon, title, desc }) => (
 );
 
 /* ================= STYLES ================= */
-/* ================= STYLES ================= */
 
 const styles = {
   page: {
-    height: "100vh", // Force exact viewport height
-    width: "100vw",  // Force exact viewport width
+    height: "100vh",
+    width: "100vw",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
     fontFamily: "'Inter', sans-serif",
-    overflow: "hidden", // STRICTLY remove scrollbars
+    overflow: "hidden",
   },
 
   container: {
     width: "100%",
-    maxWidth: "1000px", // Use string with px
-    height: "600px",    // Fixed height for consistency (optional, but looks cleaner)
-    maxHeight: "90vh",  // Safety cap for smaller screens
+    maxWidth: "1000px",
+    height: "600px",
+    maxHeight: "90vh",
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     background: "rgba(255, 255, 255, 0.95)",
     borderRadius: "24px",
     boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
     border: "1px solid rgba(255,255,255,0.8)",
-    overflow: "hidden", // Ensures content doesn't spill out of corners
+    overflow: "hidden",
   },
 
   /* --- LEFT PANEL --- */
   left: {
-    padding: "40px 50px", // Reduced top/bottom padding slightly
+    padding: "40px 50px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    height: "100%",       // Take full height of container
-    boxSizing: "border-box", // Important for padding calculations
+    height: "100%",
+    boxSizing: "border-box",
   },
 
   brand: {
     fontSize: "20px",
     fontWeight: "700",
     color: "#4f46e5",
-    marginBottom: "30px", // Reduced margin
+    marginBottom: "30px",
     letterSpacing: "-0.5px",
     display: "flex",
     alignItems: "center",
