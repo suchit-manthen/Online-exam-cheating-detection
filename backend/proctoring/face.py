@@ -36,7 +36,7 @@ def analyze_face(frame):
 
     # UPDATED THRESHOLDS: Changed from 0.06 to 0.10
     # This prevents false flags when reading the corners of the screen.
-    if offset > 0.10:
+    if offset > 0.06:
         return {"faces": 1, "direction": "LEFT", "event": "LOOKING_LEFT"}
     if offset < -0.10:
         return {"faces": 1, "direction": "RIGHT", "event": "LOOKING_RIGHT"}

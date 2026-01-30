@@ -65,7 +65,7 @@ function Exam() {
     if (!attemptId || submitted || terminated) return;
 
     try {
-      const res = await fetch(`${API_BASE}/process-frame`, {
+      const res = await fetch(`${API_BASE}/analyze-frame`, { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image, attempt_id: attemptId })
@@ -162,109 +162,113 @@ function Exam() {
         </div>
       )}
 
-      {/* --- MAIN GRID LAYOUT --- */}
-      <div style={styles.gridContainer}>
-        
-        {/* LEFT: QUESTION AREA */}
-        <div style={styles.mainContent}>
-          <div style={styles.questionCard}>
-            <div style={styles.questionHeader}>
-              <span style={styles.qLabel}>Question {current + 1}</span>
-              <span style={styles.qTotal}>of {questions.length}</span>
-            </div>
-            <h3 style={styles.questionText}>
-              {questions[current].question}
-            </h3>
-          </div>
-
-          <div style={styles.optionsList}>
-            {questions[current].options.map((opt, idx) => {
-              const isSelected = answers[current] === idx;
-              return (
-                <div
-                  key={idx}
-                  onClick={() => setAnswers({ ...answers, [current]: idx })}
-                  style={{
-                    ...styles.optionCard,
-                    ...(isSelected ? styles.optionSelected : {})
-                  }}
-                >
-                  <div style={{
-                    ...styles.optionKey,
-                    ...(isSelected ? styles.optionKeySelected : {})
-                  }}>
-                    {String.fromCharCode(65 + idx)}
-                  </div>
-                  <span style={styles.optionText}>{opt}</span>
+      {/* --- MAIN CONTENT (FIXED SCROLL) --- */}
+      <div style={styles.mainContainer}>
+        <div style={styles.contentGrid}>
+          
+          {/* LEFT: SCROLLABLE QUESTION AREA */}
+          <div style={styles.leftColumn}>
+            <div style={styles.scrollableContent}>
+              <div style={styles.questionCard}>
+                <div style={styles.questionHeader}>
+                  <span style={styles.qLabel}>Question {current + 1}</span>
+                  <span style={styles.qTotal}>of {questions.length}</span>
                 </div>
-              );
-            })}
-          </div>
+                <h3 style={styles.questionText}>
+                  {questions[current].question}
+                </h3>
+              </div>
 
-          {/* NAV FOOTER */}
-          <div style={styles.navBar}>
-            <button
-              onClick={() => setCurrent(current - 1)}
-              disabled={current === 0}
-              style={{
-                ...styles.navBtn,
-                ...(current === 0 ? styles.navBtnDisabled : {})
-              }}
-            >
-              ← Previous
-            </button>
+              <div style={styles.optionsList}>
+                {questions[current].options.map((opt, idx) => {
+                  const isSelected = answers[current] === idx;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setAnswers({ ...answers, [current]: idx })}
+                      style={{
+                        ...styles.optionCard,
+                        ...(isSelected ? styles.optionSelected : {})
+                      }}
+                    >
+                      <div style={{
+                        ...styles.optionKey,
+                        ...(isSelected ? styles.optionKeySelected : {})
+                      }}>
+                        {String.fromCharCode(65 + idx)}
+                      </div>
+                      <span style={styles.optionText}>{opt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
-            {current < questions.length - 1 ? (
+            {/* NAV FOOTER (Fixed at bottom of left column) */}
+            <div style={styles.navBar}>
               <button
-                onClick={() => setCurrent(current + 1)}
-                style={styles.primaryBtn}
+                onClick={() => setCurrent(current - 1)}
+                disabled={current === 0}
+                style={{
+                  ...styles.navBtn,
+                  ...(current === 0 ? styles.navBtnDisabled : {})
+                }}
               >
-                Save & Next →
+                ← Previous
               </button>
-            ) : (
-              <button onClick={handleSubmit} style={styles.submitBtn}>
-                Submit Exam
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* RIGHT: PALETTE & TOOLS */}
-        <aside style={styles.sidebar}>
-          <div style={styles.paletteCard}>
-            <h4 style={styles.sidebarTitle}>Question Palette</h4>
-            <div style={styles.paletteGrid}>
-              {questions.map((_, i) => (
-                <div
-                  key={i}
-                  onClick={() => setCurrent(i)}
-                  style={{
-                    ...styles.paletteDot,
-                    ...(i === current ? styles.paletteDotActive : {}),
-                    ...(answers[i] !== undefined && i !== current ? styles.paletteDotAnswered : {})
-                  }}
+              {current < questions.length - 1 ? (
+                <button
+                  onClick={() => setCurrent(current + 1)}
+                  style={styles.primaryBtn}
                 >
-                  {i + 1}
-                </div>
-              ))}
-            </div>
-            
-            <div style={styles.legend}>
-              <div style={styles.legendItem}>
-                <div style={{...styles.dotMini, background: '#4f46e5'}}></div> Current
-              </div>
-              <div style={styles.legendItem}>
-                <div style={{...styles.dotMini, background: '#10b981'}}></div> Answered
-              </div>
-              <div style={styles.legendItem}>
-                <div style={{...styles.dotMini, background: '#e2e8f0'}}></div> Pending
-              </div>
+                  Save & Next →
+                </button>
+              ) : (
+                <button onClick={handleSubmit} style={styles.submitBtn}>
+                  Submit Exam
+                </button>
+              )}
             </div>
           </div>
-        </aside>
+
+          {/* RIGHT: FIXED SIDEBAR */}
+          <aside style={styles.sidebar}>
+            <div style={styles.paletteCard}>
+              <h4 style={styles.sidebarTitle}>Question Palette</h4>
+              <div style={styles.paletteGrid}>
+                {questions.map((_, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setCurrent(i)}
+                    style={{
+                      ...styles.paletteDot,
+                      ...(i === current ? styles.paletteDotActive : {}),
+                      ...(answers[i] !== undefined && i !== current ? styles.paletteDotAnswered : {})
+                    }}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+              
+              <div style={styles.legend}>
+                <div style={styles.legendItem}>
+                  <div style={{...styles.dotMini, background: '#4f46e5'}}></div> Current
+                </div>
+                <div style={styles.legendItem}>
+                  <div style={{...styles.dotMini, background: '#10b981'}}></div> Answered
+                </div>
+                <div style={styles.legendItem}>
+                  <div style={{...styles.dotMini, background: '#e2e8f0'}}></div> Pending
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
 
-      {/* --- WEBCAM WIDGET (NOW ON RIGHT) --- */}
+      {/* --- WEBCAM WIDGET (Bottom Right) --- */}
       <div style={styles.webcamWidget}>
         <div style={styles.webcamHeader}>
           <div style={styles.webcamTitle}>
@@ -297,31 +301,31 @@ const getWarningMessage = (w) => {
   return "⚠️ Warning: Please stay focused on your exam screen.";
 }
 
-/* ---------------- MODERN STYLES (Inter Font) ---------------- */
+/* ---------------- MODERN STYLES (Fixed Scroll) ---------------- */
 
 const styles = {
   page: {
-    minHeight: "100vh",
+    height: "100vh", // Lock height to viewport
+    width: "100vw",  // Lock width to viewport
     background: "#f8fafc",
     fontFamily: "'Inter', sans-serif",
     color: "#1e293b",
-    paddingBottom: 80
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden" // NO SCROLL ON BODY
   },
   
   /* HEADER */
   header: {
-    background: "rgba(255, 255, 255, 0.9)",
-    backdropFilter: "blur(10px)",
+    background: "white",
     borderBottom: "1px solid #e2e8f0",
     padding: "0 32px",
     height: "70px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    position: "sticky",
-    top: 0,
+    flexShrink: 0, // Prevent header from shrinking
     zIndex: 50,
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
   },
   logoArea: { display: "flex", alignItems: "center", gap: 10 },
   logoIcon: { fontSize: 24 },
@@ -352,58 +356,86 @@ const styles = {
 
   /* WARNING BANNER */
   warningBanner: {
-    maxWidth: 900,
-    margin: "20px auto 0",
-    padding: "16px",
+    position: "absolute",
+    top: 80,
+    left: "50%",
+    transform: "translateX(-50%)",
+    padding: "12px 24px",
     borderRadius: 12,
     textAlign: "center",
     fontWeight: 600,
     fontSize: 15,
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-    animation: "fadeIn 0.3s ease-in-out"
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    zIndex: 100,
+    animation: "slideDown 0.3s ease-out"
   },
   warningCritical: { background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" },
   warningHigh: { background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" },
   warningMedium: { background: "#fff7ed", color: "#c2410c", border: "1px solid #ffedd5" },
 
-  /* LAYOUT GRID */
-  gridContainer: {
-    maxWidth: 1200,
-    margin: "30px auto",
-    display: "grid",
-    gridTemplateColumns: "1fr 320px",
-    gap: 30,
-    padding: "0 20px"
+  /* MAIN LAYOUT (The Fix) */
+  mainContainer: {
+    flex: 1, // Take remaining height
+    display: "flex",
+    justifyContent: "center",
+    padding: "20px",
+    overflow: "hidden" // Internal scrolling only
   },
-  mainContent: { display: "flex", flexDirection: "column", gap: 24 },
   
+  contentGrid: {
+    width: "100%",
+    maxWidth: "1200px",
+    display: "grid",
+    gridTemplateColumns: "1fr 320px", // Main Content vs Sidebar
+    gap: "24px",
+    height: "100%", // Fill container
+  },
+
+  /* LEFT COLUMN (Questions) */
+  leftColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+    height: "100%",
+    overflow: "hidden"
+  },
+
+  scrollableContent: {
+    flex: 1, // Fill available space
+    overflowY: "auto", // SCROLL HERE if content is long
+    paddingRight: "8px", // Space for scrollbar
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px"
+  },
+
   /* QUESTION CARD */
   questionCard: {
     background: "white",
-    padding: 40,
-    borderRadius: 20,
-    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)",
-    border: "1px solid #f1f5f9"
+    padding: "40px",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+    border: "1px solid #e2e8f0"
   },
   questionHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: "20px",
     borderBottom: "1px solid #f1f5f9",
-    paddingBottom: 16
+    paddingBottom: "16px"
   },
   qLabel: { color: "#4f46e5", fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "1px" },
   qTotal: { color: "#94a3b8", fontSize: 13, fontWeight: 500 },
-  questionText: { fontSize: 22, lineHeight: 1.5, fontWeight: 600, color: "#1e293b", margin: 0 },
+  questionText: { fontSize: "22px", lineHeight: 1.5, fontWeight: 600, color: "#1e293b", margin: 0 },
 
   /* OPTIONS */
-  optionsList: { display: "flex", flexDirection: "column", gap: 12 },
+  optionsList: { display: "flex", flexDirection: "column", gap: "12px" },
   optionCard: {
     display: "flex",
     alignItems: "center",
     padding: "16px 20px",
-    borderRadius: 12,
+    borderRadius: "12px",
     border: "2px solid #e2e8f0",
     background: "white",
     cursor: "pointer",
@@ -415,70 +447,34 @@ const styles = {
     boxShadow: "0 0 0 4px rgba(79, 70, 229, 0.1)"
   },
   optionKey: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: "32px",
+    height: "32px",
+    borderRadius: "8px",
     background: "#f1f5f9",
     color: "#64748b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontWeight: 600,
-    marginRight: 16,
-    fontSize: 14
+    marginRight: "16px",
+    fontSize: "14px"
   },
   optionKeySelected: {
     background: "#4f46e5",
     color: "white"
   },
-  optionText: { fontSize: 16, fontWeight: 500, color: "#334155" },
+  optionText: { fontSize: "16px", fontWeight: 500, color: "#334155" },
 
-  /* SIDEBAR PALETTE */
-  sidebar: { display: "flex", flexDirection: "column", gap: 20 },
-  paletteCard: {
-    background: "white",
-    padding: 24,
-    borderRadius: 20,
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-    border: "1px solid #f1f5f9"
-  },
-  sidebarTitle: { fontSize: 15, fontWeight: 700, marginBottom: 16, color: "#1e293b" },
-  paletteGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
-    gap: 10,
-    marginBottom: 24
-  },
-  paletteDot: {
-    aspectRatio: "1",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    color: "#64748b",
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: "pointer",
-    transition: "all 0.2s"
-  },
-  paletteDotActive: { background: "#4f46e5", color: "white", borderColor: "#4f46e5" },
-  paletteDotAnswered: { background: "#10b981", color: "white", borderColor: "#10b981" },
-
-  legend: { display: "flex", gap: 12, fontSize: 12, color: "#64748b", flexWrap: "wrap" },
-  legendItem: { display: "flex", alignItems: "center", gap: 6 },
-  dotMini: { width: 8, height: 8, borderRadius: "50%" },
-
-  /* NAVIGATION FOOTER */
+  /* NAV BAR */
   navBar: {
     display: "flex",
     justifyContent: "space-between",
-    marginTop: 10
+    paddingTop: "10px",
+    flexShrink: 0
   },
   navBtn: {
     padding: "12px 24px",
-    borderRadius: 10,
+    borderRadius: "10px",
     border: "1px solid #e2e8f0",
     background: "white",
     color: "#64748b",
@@ -488,7 +484,7 @@ const styles = {
   navBtnDisabled: { opacity: 0.5, cursor: "not-allowed" },
   primaryBtn: {
     padding: "12px 28px",
-    borderRadius: 10,
+    borderRadius: "10px",
     border: "none",
     background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
     color: "white",
@@ -498,7 +494,7 @@ const styles = {
   },
   submitBtn: {
     padding: "12px 28px",
-    borderRadius: 10,
+    borderRadius: "10px",
     border: "none",
     background: "#10b981",
     color: "white",
@@ -507,14 +503,55 @@ const styles = {
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
   },
 
-  /* WEBCAM WIDGET (MOVED TO RIGHT) */
+  /* SIDEBAR PALETTE */
+  sidebar: { 
+    display: "flex", 
+    flexDirection: "column",
+    height: "fit-content" // Or "100%" if you want it to stretch
+  },
+  paletteCard: {
+    background: "white",
+    padding: "24px",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+    border: "1px solid #f1f5f9"
+  },
+  sidebarTitle: { fontSize: "15px", fontWeight: 700, marginBottom: "16px", color: "#1e293b" },
+  paletteGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: "10px",
+    marginBottom: "24px"
+  },
+  paletteDot: {
+    aspectRatio: "1",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "10px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    color: "#64748b",
+    fontWeight: 600,
+    fontSize: "13px",
+    cursor: "pointer",
+    transition: "all 0.2s"
+  },
+  paletteDotActive: { background: "#4f46e5", color: "white", borderColor: "#4f46e5" },
+  paletteDotAnswered: { background: "#10b981", color: "white", borderColor: "#10b981" },
+
+  legend: { display: "flex", gap: "12px", fontSize: "12px", color: "#64748b", flexWrap: "wrap" },
+  legendItem: { display: "flex", alignItems: "center", gap: "6px" },
+  dotMini: { width: "8px", height: "8px", borderRadius: "50%" },
+
+  /* WEBCAM WIDGET */
   webcamWidget: {
     position: "fixed",
-    bottom: 30,
-    right: 30, // Changed from left to right
-    width: 260,
+    bottom: "30px",
+    right: "30px",
+    width: "260px",
     background: "white",
-    borderRadius: 16,
+    borderRadius: "16px",
     overflow: "hidden",
     boxShadow: "0 20px 50px -12px rgba(0, 0, 0, 0.25)",
     border: "1px solid #e2e8f0",
@@ -525,14 +562,15 @@ const styles = {
     background: "#f8fafc",
     borderBottom: "1px solid #e2e8f0"
   },
-  webcamTitle: { fontSize: 12, fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: 8 },
-  pulsingDot: { width: 8, height: 8, background: "#10b981", borderRadius: "50%", boxShadow: "0 0 0 2px rgba(16, 185, 129, 0.2)" },
-  webcamFrame: { background: "black", height: 160 },
-  webcamStatus: { padding: "8px", textAlign: "center", fontSize: 11, color: "#94a3b8", background: "white", borderTop: "1px solid #e2e8f0" },
+  webcamTitle: { fontSize: "12px", fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: "8px" },
+  pulsingDot: { width: "8px", height: "8px", background: "#10b981", borderRadius: "50%", boxShadow: "0 0 0 2px rgba(16, 185, 129, 0.2)" },
+  webcamFrame: { background: "black", height: "160px" },
+  webcamStatus: { padding: "8px", textAlign: "center", fontSize: "11px", color: "#94a3b8", background: "white", borderTop: "1px solid #e2e8f0" },
 
   /* FULL PAGE STATUS STATES */
   fullPageCenter: {
-    minHeight: "100vh",
+    height: "100vh",
+    width: "100vw",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -541,18 +579,18 @@ const styles = {
   },
   statusCard: {
     background: "white",
-    padding: 60,
-    borderRadius: 24,
+    padding: "60px",
+    borderRadius: "24px",
     textAlign: "center",
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-    maxWidth: 500,
+    maxWidth: "500px",
     border: "1px solid #e2e8f0"
   },
-  iconCircleError: { width: 80, height: 80, background: "#fee2e2", color: "#ef4444", fontSize: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },
-  iconCircleSuccess: { width: 80, height: 80, background: "#dcfce7", color: "#16a34a", fontSize: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },
-  statusTitle: { fontSize: 24, fontWeight: 800, color: "#0f172a", marginBottom: 12 },
-  statusText: { fontSize: 16, color: "#64748b", lineHeight: 1.6, marginBottom: 32 },
-  dangerBtn: { padding: "12px 30px", borderRadius: 12, border: "none", background: "#ef4444", color: "white", fontWeight: 600, cursor: "pointer" }
+  iconCircleError: { width: "80px", height: "80px", background: "#fee2e2", color: "#ef4444", fontSize: "40px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },
+  iconCircleSuccess: { width: "80px", height: "80px", background: "#dcfce7", color: "#16a34a", fontSize: "40px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },
+  statusTitle: { fontSize: "24px", fontWeight: 800, color: "#0f172a", marginBottom: "12px" },
+  statusText: { fontSize: "16px", color: "#64748b", lineHeight: 1.6, marginBottom: "32px" },
+  dangerBtn: { padding: "12px 30px", borderRadius: "12px", border: "none", background: "#ef4444", color: "white", fontWeight: 600, cursor: "pointer" }
 };
 
 export default Exam;

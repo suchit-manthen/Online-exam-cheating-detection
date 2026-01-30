@@ -13,8 +13,21 @@ def get_event_weight(event_type):
     return row[0] if row else 1
 
 def log_event(event_type, attempt_id):
-    weight = get_event_weight(event_type)
     conn, cur = get_db()
+
+    cur.execute(
+        "SELECT status FROM exam_attempts WHERE id=%s",
+        (attempt_id,)
+    )
+    status = cur.fetchone()[0]
+
+    if status in ("TERMINATED", "COMPLETED"):
+        print(f"[SKIPPED] {event_type} | Attempt {attempt_id} already {status}")
+        cur.close()
+        conn.close()
+        return
+
+    weight = get_event_weight(event_type)
 
     cur.execute("""
         INSERT INTO cheating_events (attempt_id, event_type, weight)
@@ -31,4 +44,4 @@ def log_event(event_type, attempt_id):
     cur.close()
     conn.close()
 
-    print(f"DB LOG: {event_type} (+{weight})")
+    print(f"[DB LOG] {event_type} (+{weight}) | Attempt {attempt_id}")

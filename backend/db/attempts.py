@@ -2,14 +2,16 @@ from db.connection import get_db
 
 def evaluate_attempt(attempt_id):
     conn, cur = get_db()
+
     cur.execute(
-        "SELECT cheating_score FROM exam_attempts WHERE id=%s",
+        "SELECT cheating_score, status FROM exam_attempts WHERE id=%s",
         (attempt_id,)
     )
-    score = cur.fetchone()[0]
+    score, status = cur.fetchone()
 
     admin_status = None
-    if score >= 15:
+
+    if score >= 15 and status == "ONGOING":
         admin_status = "TERMINATED"
         cur.execute(
             "UPDATE exam_attempts SET status=%s WHERE id=%s",
@@ -32,6 +34,7 @@ def evaluate_attempt(attempt_id):
         "status": admin_status,
         "warning": warning
     }
+
 
 
 def auto_flag_abandoned_attempts():
