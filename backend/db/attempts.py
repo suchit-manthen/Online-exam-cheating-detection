@@ -1,5 +1,35 @@
 from db.connection import get_db 
 
+def save_face_embedding(attempt_id, embedding):
+    conn, cur = get_db()
+
+    cur.execute("""
+        UPDATE exam_attempts
+        SET face_embedding = %s
+        WHERE id = %s
+    """, (embedding, attempt_id))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def is_face_registered(attempt_id):
+    conn, cur = get_db()
+
+    cur.execute("""
+        SELECT face_embedding
+        FROM exam_attempts
+        WHERE id = %s
+    """, (attempt_id,))
+
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    return row is not None and row[0] is not None
+
 def evaluate_attempt(attempt_id):
     conn, cur = get_db()
 
@@ -58,3 +88,22 @@ def auto_flag_abandoned_attempts():
     conn.commit()
     cur.close()
     conn.close()
+
+def get_face_embedding(attempt_id):
+    conn, cur = get_db()
+
+    cur.execute("""
+        SELECT face_embedding
+        FROM exam_attempts
+        WHERE id = %s
+    """, (attempt_id,))
+
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if row is None:
+        return None
+
+    return row[0]  # returns list[float] or None
