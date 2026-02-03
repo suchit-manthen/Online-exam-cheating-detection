@@ -144,7 +144,3 @@ The system automatically detects suspicious activities, issues warnings, and ter
 - **CI/CD:** GitHub-based redeployment
 
 ---
-
-## One-Line Description (For Viva / PPT)
-
-An AI-powered online exam proctoring system that uses real-time webcam analysis, behavioral monitoring, and face authentication to automatically detect and prevent cheating, ensuring fair and secure online assessments.
