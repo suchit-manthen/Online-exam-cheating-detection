@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../config/api";
 import Webcam from "../components/Webcam";
 import { questions } from "../data/questions";
 import { startTabMonitoring } from "../utils/monitor";
 import { blockClipboard } from "../utils/clipboard";
-import { useLocation } from "react-router-dom";
-
-
-// INSTRUCTIONS:
-// Ensure you have this font imported in your index.html or index.css:
-// @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+import {
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreen,
+  addFullscreenListener,
+  removeFullscreenListener
+} from "../utils/fullscreen";
 
 function Exam() {
   const navigate = useNavigate();
@@ -22,6 +23,12 @@ function Exam() {
   const [terminated, setTerminated] = useState(false);
   const [warning, setWarning] = useState(null);
 
+  const [fullscreenWarning, setFullscreenWarning] = useState(false);
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
+  const [countdown, setCountdown] = useState(5);
+
+  const timerRef = useRef(null);
+
   // ---------------- START EXAM ----------------
   useEffect(() => {
     fetch(`${API_BASE}/start-exam`, {
@@ -30,9 +37,66 @@ function Exam() {
       body: JSON.stringify({ exam_id: "ai_exam_1" })
     })
       .then(res => res.json())
-      .then(data => setAttemptId(data.attempt_id))
+      .then(async data => {
+        setAttemptId(data.attempt_id);
+        await enterFullscreen();
+      })
       .catch(err => console.error(err));
   }, []);
+
+  // ---------------- FULLSCREEN DETECTION ----------------
+  useEffect(() => {
+    if (!attemptId || submitted) return;
+
+    const handleFullscreenChange = () => {
+      if (!isFullscreen()) {
+        setFullscreenWarning(true);
+        setCountdown(5);
+
+        timerRef.current = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current);
+
+              setFullscreenExitCount(prevCount => {
+                const newCount = prevCount + 1;
+
+                if (newCount === 1) {
+                  logEvent("FULLSCREEN_EXIT_WARNING");
+                } else if (newCount === 2) {
+                  logEvent("FULLSCREEN_EXIT_REPEAT");
+                } else {
+                  logEvent("FULLSCREEN_TERMINATED");
+                  setTerminated(true);
+                }
+
+                return newCount;
+              });
+
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+      } else {
+        clearInterval(timerRef.current);
+        setFullscreenWarning(false);
+      }
+    };
+
+    addFullscreenListener(handleFullscreenChange);
+
+    return () => {
+      removeFullscreenListener(handleFullscreenChange);
+      clearInterval(timerRef.current);
+    };
+  }, [attemptId, submitted]);
+
+  const reEnterFullscreen = async () => {
+    await enterFullscreen();
+    setFullscreenWarning(false);
+  };
 
   // ---------------- LOG EVENTS ----------------
   const logEvent = async (event) => {
@@ -49,12 +113,13 @@ function Exam() {
 
       if (data.warning) setWarning(data.warning);
       if (data.status === "TERMINATED") setTerminated(true);
-      
+
     } catch (err) {
       console.error("Log failed:", err);
     }
   };
 
+  // ---------------- TAB + CLIPBOARD MONITOR ----------------
   useEffect(() => {
     if (!submitted && !terminated && attemptId) {
       startTabMonitoring(logEvent);
@@ -62,7 +127,7 @@ function Exam() {
     }
   }, [submitted, terminated, attemptId]);
 
-  // ---------------- WEBCAM ----------------
+  // ---------------- WEBCAM MONITOR ----------------
   const sendFrameToBackend = async (image) => {
     if (!attemptId || submitted || terminated) return;
 
@@ -75,20 +140,9 @@ function Exam() {
 
       const data = await res.json();
 
-      // ---- UI WARNINGS ----
-      if (data.warning) {
-        setWarning(data.warning);
-      }
-
-      // ---- IDENTITY MISMATCH ----
-      if (data.identity_mismatch) {
-        setWarning("IDENTITY_MISMATCH");
-      }
-
-      // ---- TERMINATION ----
-      if (data.status === "TERMINATED") {
-        setTerminated(true);
-      }
+      if (data.warning) setWarning(data.warning);
+      if (data.identity_mismatch) setWarning("IDENTITY_MISMATCH");
+      if (data.status === "TERMINATED") setTerminated(true);
 
     } catch (err) {
       console.error("Backend error:", err);
@@ -102,211 +156,219 @@ function Exam() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attempt_id: attemptId })
     });
+
+    await exitFullscreen();
     setSubmitted(true);
   };
 
-  // ---------------- TERMINATED STATE ----------------
+  // ... keep all your logic, hooks, and imports above this ...
+
+  // ---------------- TERMINATED ----------------
   if (terminated) {
+    // ... keep your existing terminated UI or style it similarly ...
     return (
       <div style={styles.fullPageCenter}>
         <div style={styles.statusCard}>
-          <div style={styles.iconCircleError}>🚫</div>
+          <div style={styles.iconCircleError}>!</div>
           <h2 style={styles.statusTitle}>Exam Terminated</h2>
-          <p style={styles.statusText}>
-            Our AI system detected multiple integrity violations. 
-            This session has been flagged for administrator review.
-          </p>
-          <button style={styles.dangerBtn} onClick={() => navigate("/")}>
-            Return to Dashboard
-          </button>
+          <p style={styles.statusText}>Fullscreen violation or integrity breach detected.</p>
+          <button style={styles.dangerBtn} onClick={() => navigate("/")}>Return Home</button>
         </div>
       </div>
     );
   }
 
-  // ---------------- SUBMITTED STATE ----------------
+  // ---------------- SUBMITTED ----------------
   if (submitted) {
     return (
       <div style={styles.fullPageCenter}>
         <div style={styles.statusCard}>
-          <div style={styles.iconCircleSuccess}>✅</div>
+          <div style={styles.iconCircleSuccess}>✓</div>
           <h2 style={styles.statusTitle}>Submission Successful</h2>
-          <p style={styles.statusText}>
-            Your answers have been recorded securely. 
-            You may now close this window.
-          </p>
-          <button onClick={() => navigate("/")} style={styles.primaryBtn}>
-            Return to Home
-          </button>
+          <p style={styles.statusText}>Your exam has been uploaded securely.</p>
+          <button style={styles.submitBtn} onClick={() => navigate("/")}>Return Home</button>
         </div>
       </div>
     );
   }
 
+  // ---------------- MAIN EXAM UI ----------------
   return (
     <div style={styles.page}>
-      {/* --- HEADER --- */}
+
+      {/* Fullscreen Warning Overlay */}
+      {fullscreenWarning && (
+        <div style={styles.fullscreenOverlay}>
+          <div style={styles.fullscreenModal}>
+            <div style={styles.iconCircleError}>!</div>
+            <h3 style={styles.statusTitle}>Fullscreen Required</h3>
+            <p style={styles.statusText}>Return within {countdown} seconds</p>
+            <button style={styles.primaryBtn} onClick={reEnterFullscreen}>
+              Re-enter Fullscreen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <header style={styles.header}>
         <div style={styles.logoArea}>
           <span style={styles.logoIcon}>🛡️</span>
-          <span style={styles.logoText}>SecureExam.ai</span>
+          <span style={styles.logoText}>SecureExam</span>
         </div>
-        
         <div style={styles.timerBadge}>
-          <span style={styles.timerIcon}>⏰</span> 
-          <span>19:01 Remaining</span>
+           <span>⏱️ Time Remaining: 45:00</span> {/* Placeholder for timer */}
         </div>
-
-        <button onClick={handleSubmit} style={styles.finishBtn}>
-          Finish Exam
-        </button>
+        <button style={styles.finishBtn} onClick={handleSubmit}>Finish Exam</button>
       </header>
 
-      {/* --- WARNING BANNER --- */}
+      {/* Warning Banner */}
       {warning && (
         <div style={{...styles.warningBanner, ...getWarningStyle(warning)}}>
           {getWarningMessage(warning)}
         </div>
       )}
 
-      {/* --- MAIN CONTENT (FIXED SCROLL) --- */}
+      {/* Main Layout Grid */}
       <div style={styles.mainContainer}>
         <div style={styles.contentGrid}>
           
-          {/* LEFT: SCROLLABLE QUESTION AREA */}
+          {/* Left Column: Questions */}
           <div style={styles.leftColumn}>
             <div style={styles.scrollableContent}>
+              
               <div style={styles.questionCard}>
                 <div style={styles.questionHeader}>
                   <span style={styles.qLabel}>Question {current + 1}</span>
                   <span style={styles.qTotal}>of {questions.length}</span>
                 </div>
-                <h3 style={styles.questionText}>
-                  {questions[current].question}
-                </h3>
-              </div>
+                
+                <h3 style={styles.questionText}>{questions[current].question}</h3>
+                
+                <br />
 
-              <div style={styles.optionsList}>
-                {questions[current].options.map((opt, idx) => {
-                  const isSelected = answers[current] === idx;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => setAnswers({ ...answers, [current]: idx })}
-                      style={{
-                        ...styles.optionCard,
-                        ...(isSelected ? styles.optionSelected : {})
-                      }}
-                    >
-                      <div style={{
-                        ...styles.optionKey,
-                        ...(isSelected ? styles.optionKeySelected : {})
-                      }}>
-                        {String.fromCharCode(65 + idx)}
+                {/* Options */}
+                <div style={styles.optionsList}>
+                  {questions[current].options.map((opt, idx) => {
+                    const isSelected = answers[current] === idx;
+                    return (
+                      <div 
+                        key={idx} 
+                        style={{
+                          ...styles.optionCard, 
+                          ...(isSelected ? styles.optionSelected : {})
+                        }}
+                        onClick={() => setAnswers({ ...answers, [current]: idx })}
+                      >
+                        <div style={{
+                          ...styles.optionKey,
+                          ...(isSelected ? styles.optionKeySelected : {})
+                        }}>
+                          {String.fromCharCode(65 + idx)}
+                        </div>
+                        <span style={styles.optionText}>{opt}</span>
                       </div>
-                      <span style={styles.optionText}>{opt}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* NAV FOOTER (Fixed at bottom of left column) */}
-            <div style={styles.navBar}>
-              <button
-                onClick={() => setCurrent(current - 1)}
-                disabled={current === 0}
-                style={{
-                  ...styles.navBtn,
-                  ...(current === 0 ? styles.navBtnDisabled : {})
-                }}
-              >
-                ← Previous
-              </button>
-
-              {current < questions.length - 1 ? (
-                <button
-                  onClick={() => setCurrent(current + 1)}
-                  style={styles.primaryBtn}
+              {/* Navigation */}
+              <div style={styles.navBar}>
+                <button 
+                  style={current === 0 ? {...styles.navBtn, ...styles.navBtnDisabled} : styles.navBtn}
+                  onClick={() => setCurrent(c => Math.max(0, c - 1))}
+                  disabled={current === 0}
                 >
-                  Save & Next →
+                  Previous
                 </button>
-              ) : (
-                <button onClick={handleSubmit} style={styles.submitBtn}>
-                  Submit Exam
-                </button>
-              )}
+
+                {current < questions.length - 1 ? (
+                  <button style={styles.primaryBtn} onClick={() => setCurrent(c => c + 1)}>
+                    Next Question
+                  </button>
+                ) : (
+                  <button style={styles.submitBtn} onClick={handleSubmit}>
+                    Submit Exam
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* RIGHT: FIXED SIDEBAR */}
-          <aside style={styles.sidebar}>
+          {/* Right Column: Sidebar / Palette */}
+          <div style={styles.sidebar}>
             <div style={styles.paletteCard}>
-              <h4 style={styles.sidebarTitle}>Question Palette</h4>
+              <div style={styles.sidebarTitle}>Question Palette</div>
               <div style={styles.paletteGrid}>
-                {questions.map((_, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setCurrent(i)}
-                    style={{
-                      ...styles.paletteDot,
-                      ...(i === current ? styles.paletteDotActive : {}),
-                      ...(answers[i] !== undefined && i !== current ? styles.paletteDotAnswered : {})
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-                ))}
+                {questions.map((_, idx) => {
+                   const isAnswered = answers[idx] !== undefined;
+                   const isCurrent = current === idx;
+                   let dotStyle = styles.paletteDot;
+                   if (isCurrent) dotStyle = {...dotStyle, ...styles.paletteDotActive};
+                   else if (isAnswered) dotStyle = {...dotStyle, ...styles.paletteDotAnswered};
+
+                   return (
+                     <div 
+                        key={idx} 
+                        style={dotStyle}
+                        onClick={() => setCurrent(idx)}
+                     >
+                       {idx + 1}
+                     </div>
+                   );
+                })}
               </div>
               
               <div style={styles.legend}>
                 <div style={styles.legendItem}>
-                  <div style={{...styles.dotMini, background: '#4f46e5'}}></div> Current
+                  <div style={{...styles.dotMini, background: "#4f46e5"}}></div> Current
                 </div>
                 <div style={styles.legendItem}>
-                  <div style={{...styles.dotMini, background: '#10b981'}}></div> Answered
-                </div>
-                <div style={styles.legendItem}>
-                  <div style={{...styles.dotMini, background: '#e2e8f0'}}></div> Pending
+                  <div style={{...styles.dotMini, background: "#10b981"}}></div> Answered
                 </div>
               </div>
             </div>
-          </aside>
+          </div>
+
         </div>
       </div>
 
-      {/* --- WEBCAM WIDGET (Bottom Right) --- */}
+      {/* Webcam Widget Wrapper */}
       <div style={styles.webcamWidget}>
-        <div style={styles.webcamHeader}>
-          <div style={styles.webcamTitle}>
-            <div style={styles.pulsingDot}></div>
-            Proctoring Active
-          </div>
-        </div>
-        <div style={styles.webcamFrame}>
-          <Webcam onCapture={sendFrameToBackend} warningLevel={warning} />
-        </div>
-        <div style={styles.webcamStatus}>
-          AI Monitoring Enabled
-        </div>
+         <div style={styles.webcamHeader}>
+            <div style={styles.webcamTitle}>
+               <div style={styles.pulsingDot}></div> Live Monitoring
+            </div>
+         </div>
+         <div style={styles.webcamFrame}>
+            {/* Pass generic styles if your Webcam component accepts style props, 
+                otherwise this div wrapper handles the positioning */}
+            <Webcam onCapture={sendFrameToBackend} warningLevel={warning} />
+         </div>
+         <div style={styles.webcamStatus}>
+            Status: {warning ? "Suspicious" : "Secure"}
+         </div>
       </div>
+
     </div>
   );
 }
 
-// Helper to get styling based on warning level
 const getWarningStyle = (w) => {
   if (w === "PHONE_DETECTED" || w === "FINAL_WARNING") return styles.warningCritical;
   if (w === "WARNING_YELLOW") return styles.warningHigh;
   return styles.warningMedium;
-}
+};
 
 const getWarningMessage = (w) => {
-  if (w === "PHONE_DETECTED") return "🚫 CELL PHONE DETECTED: Put it away immediately.";
-  if (w === "FINAL_WARNING") return "🚨 FINAL WARNING: Exam will be terminated on next violation.";
-  if (w === "WARNING_YELLOW") return "⚠️ Suspicious behavior detected. Please look at the screen.";
-  return "⚠️ Warning: Please stay focused on your exam screen.";
-}
+  if (w === "PHONE_DETECTED") return "Cell phone detected.";
+  if (w === "FULLSCREEN_EXIT") return "You exited fullscreen. Return immediately or exam will terminate.";
+  if (w === "FINAL_WARNING") return "Final warning.";
+  if (w === "WARNING_YELLOW") return "Suspicious behavior detected.";
+  if (w === "IDENTITY_MISMATCH") return "Identity mismatch detected.";
+  return "Warning issued.";
+};
 
 /* ---------------- MODERN STYLES (Fixed Scroll) ---------------- */
 
@@ -592,6 +654,27 @@ const styles = {
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
     maxWidth: "500px",
     border: "1px solid #e2e8f0"
+  },
+  fullscreenOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+    background: "rgba(0,0,0,0.6)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999
+  },
+  
+  fullscreenModal: {
+    background: "white",
+    padding: "40px",
+    borderRadius: "16px",
+    textAlign: "center",
+    width: "400px",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.3)"
   },
   iconCircleError: { width: "80px", height: "80px", background: "#fee2e2", color: "#ef4444", fontSize: "40px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },
   iconCircleSuccess: { width: "80px", height: "80px", background: "#dcfce7", color: "#16a34a", fontSize: "40px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", margin: "0 auto 24px" },

@@ -7,7 +7,10 @@ from collections import defaultdict
 
 from proctoring.face import analyze_face, extract_face
 from proctoring.phone import detect_phone
-from proctoring.face_auth import get_face_embedding as extract_embedding, cosine_distance
+from proctoring.face_auth import (
+    get_face_embedding as extract_embedding,
+    cosine_distance
+)
 
 from db.events import log_event
 from db.attempts import (
@@ -29,7 +32,7 @@ FACE_MISMATCH_THRESHOLD = 0.35
 FACE_MISMATCH_CONSECUTIVE = 3
 
 # -------------------------------------------------
-# STATE (IN-MEMORY)
+# IN-MEMORY STATE
 # -------------------------------------------------
 last_face_seen = {}
 no_face_counter = {}
@@ -44,24 +47,33 @@ identity_warning_issued = set()
 @proctoring_bp.route("/analyze-frame", methods=["POST"])
 def analyze_frame():
     data = request.json
+
+    if not data or "attempt_id" not in data or "image" not in data:
+        return jsonify({"error": "Invalid payload"}), 400
+
     attempt_id = int(data["attempt_id"])
     image = data["image"]
 
-    # -------- Decode image --------
-    image_bytes = base64.b64decode(image.split(",")[1])
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    # -------- Decode frame --------
+    try:
+        image_bytes = base64.b64decode(image.split(",")[1])
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    except:
+        return jsonify({"error": "Image decode failed"}), 400
 
     now = time.time()
 
-    # -------- Init state --------
+    # -------- Initialize state --------
     last_face_seen.setdefault(attempt_id, now)
     no_face_counter.setdefault(attempt_id, 0)
     last_event_time.setdefault(attempt_id, 0)
+    face_mismatch_counter.setdefault(attempt_id, 0)
 
     response = {
         "faces_detected": 0,
         "direction": "CENTER",
+        "gaze": "CENTER",
         "phone_detected": False,
         "status": None,
         "warning": None
@@ -70,15 +82,21 @@ def analyze_frame():
     # -------------------------------------------------
     # PHONE DETECTION
     # -------------------------------------------------
-    response["phone_detected"] = detect_phone(frame)
+    phone_detected = detect_phone(frame)
+    response["phone_detected"] = phone_detected
+
+    if phone_detected:
+        log_event("PHONE_DETECTED", attempt_id)
 
     # -------------------------------------------------
-    # FACE BEHAVIOR ANALYSIS
+    # FACE ANALYSIS (HEAD + GAZE)
     # -------------------------------------------------
     face_result = analyze_face(frame)
 
     response["faces_detected"] = face_result["faces"]
     response["direction"] = face_result["direction"]
+    response["gaze"] = face_result.get("gaze", "CENTER")
+
     event = face_result["event"]
 
     # -------------------------------------------------
@@ -103,14 +121,14 @@ def analyze_frame():
     no_face_counter[attempt_id] = 0
 
     # -------------------------------------------------
-    # CONTINUOUS IDENTITY VERIFICATION (PHASE 4)
+    # CONTINUOUS IDENTITY VERIFICATION
     # -------------------------------------------------
     stored_embedding = get_face_embedding(attempt_id)
 
-    if stored_embedding is not None and face_result["faces"] == 1:
-        face_img, face_count = extract_face(frame)
+    if stored_embedding and face_result["faces"] == 1:
+        face_img, face_count, _ = extract_face(frame)
 
-        if face_count == 1:
+        if face_count == 1 and face_img is not None:
             try:
                 live_embedding = extract_embedding(face_img)
                 distance = cosine_distance(stored_embedding, live_embedding)
@@ -120,7 +138,7 @@ def analyze_frame():
                 else:
                     face_mismatch_counter[attempt_id] = 0
 
-                # ---- WARNING ----
+                # ---- FIRST WARNING ----
                 if (
                     face_mismatch_counter[attempt_id] >= FACE_MISMATCH_CONSECUTIVE
                     and attempt_id not in identity_warning_issued
@@ -141,14 +159,17 @@ def analyze_frame():
                     return jsonify(response)
 
             except Exception as e:
-                print("Identity check error:", e)
+                print("Identity verification error:", e)
 
     # -------------------------------------------------
-    # OTHER EVENTS
+    # HEAD / GAZE EVENTS (Cooldown protected)
     # -------------------------------------------------
     if event and now - last_event_time[attempt_id] > EVENT_COOLDOWN:
         log_event(event, attempt_id)
         last_event_time[attempt_id] = now
 
+    # -------------------------------------------------
+    # FINAL SCORE EVALUATION
+    # -------------------------------------------------
     response.update(evaluate_attempt(attempt_id))
     return jsonify(response)

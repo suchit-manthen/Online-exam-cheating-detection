@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { API_BASE } from "../config/api";
+import {
+  enterFullscreen
+} from "../utils/fullscreen";
+
 
 // INSTRUCTIONS:
 // Ensure you have this font imported in your index.html or index.css:
@@ -40,51 +44,50 @@ function FaceVerify() {
       setError("Camera not ready. Please wait.");
       return;
     }
-
+  
     const image = webcamRef.current.getScreenshot();
-
+  
     if (!image) {
-      setError("Unable to capture image. Check camera permissions.");
+      setError("Unable to capture image.");
       return;
     }
-
+  
     setLoading(true);
     setError(null);
-
+  
     try {
-      const res = await fetch(`${API_BASE}/capture-face`, { // Adjusted route based on previous context
+      // 🔥 STEP 1 — Start fullscreen (MUST be inside button click)
+      await enterFullscreen();
+  
+      // 🔥 STEP 2 — Send face to backend
+      const res = await fetch(`${API_BASE}/capture-face`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           attempt_id: attemptId,
-          image: image
+          frame: image
         })
       });
-
+  
       const data = await res.json();
-
-      
-
-    if (!res.ok || data.status !== "FACE_REGISTERED") {
-      setError(data.error || data.message || "Face verification failed. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-// ✅ SUCCESS
-navigate("/exam", { state: { attemptId } });
-
-
-      // ✅ SUCCESS - Navigate to Exam with attemptId state
+  
+      if (!res.ok) {
+        setError(data.error || "Face verification failed.");
+        setLoading(false);
+        return;
+      }
+  
+      // 🔥 STEP 3 — Navigate to exam
       navigate("/exam", { state: { attemptId } });
-
+  
     } catch (err) {
       console.error(err);
-      setError("Connection error. Please check your network.");
+      setError("Verification failed.");
     } finally {
       setLoading(false);
     }
   };
+  
 
   return (
     <div style={styles.page}>
