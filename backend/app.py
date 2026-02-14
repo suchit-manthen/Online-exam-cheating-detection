@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter("ignore", FutureWarning)
+
 from flask import Flask
 from flask_cors import CORS
 

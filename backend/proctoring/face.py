@@ -83,23 +83,3 @@ def extract_face(frame):
 
     return face_img, 1, landmarks
 
-# --------------------------------------------------
-# ✅ FACE CLEAR CHECK (THIS WAS MISSING / MISPLACED)
-# --------------------------------------------------
-
-def is_face_clear(landmarks):
-    try:
-        upper_lip = landmarks[13]
-        lower_lip = landmarks[14]
-        chin = landmarks[152]
-
-        lip_distance = abs(upper_lip.y - lower_lip.y)
-        chin_distance = abs(chin.y - lower_lip.y)
-
-        # Tuned thresholds
-        if lip_distance < 0.008 or chin_distance < 0.03:
-            return False
-
-        return True
-    except Exception:
-        return False
